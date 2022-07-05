@@ -79,7 +79,7 @@ def transaction(func):
         logging.error("transaction started")
         connection = connectionPool.getconn()
         try:
-            ret = func(*args, **kwargs, cur = connection.cursor())
+            ret = func(*args, **kwargs, cursor = connection.cursor())
             connection.commit()
             connectionPool.putconn(connection)
             logging.error("transaction ended")
