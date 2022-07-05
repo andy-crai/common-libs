@@ -14,8 +14,10 @@ def init_connection_pool():
     pw = os.getenv('pwd')
     db = os.getenv('db')
     user = os.getenv('user')
+    minconn = os.getenv('min_conn')
+    maxconn = os.getenv('max_conn')
     global connectionPool
-    connectionPool = pool.ThreadedConnectionPool(minconn=2, maxconn=5,
+    connectionPool = pool.ThreadedConnectionPool(minconn=4, maxconn=10,
         dbname=db,
         user=user,
         host=host,
