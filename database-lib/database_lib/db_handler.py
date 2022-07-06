@@ -17,7 +17,7 @@ def init_connection_pool():
     minconn = os.getenv('min_conn')
     maxconn = os.getenv('max_conn')
     global connectionPool
-    connectionPool = pool.ThreadedConnectionPool(minconn=4, maxconn=10,
+    connectionPool = pool.ThreadedConnectionPool(minconn=minconn, maxconn=maxconn,
         dbname=db,
         user=user,
         host=host,
@@ -78,13 +78,13 @@ def transaction(func):
         Handles database errors and gracefully manages the connection.
     """
     def wrapper(*args, **kwargs):
-        logging.error("transaction started")
+        logging.debug("transaction started")
         connection = connectionPool.getconn()
         try:
             ret = func(*args, **kwargs, cursor = connection.cursor())
             connection.commit()
             connectionPool.putconn(connection)
-            logging.error("transaction ended")
+            logging.debug("transaction ended")
             return ret
         except DatabaseError as err:
             connection.rollback()
