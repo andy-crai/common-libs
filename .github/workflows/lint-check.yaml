@@ -3,9 +3,8 @@ name: Python lint check
 on:
   pull_request:
     branches: [main]
-
-  paths:
-    - "**/*.py"
+    paths:
+      - "**/*.py"
 
 jobs:
   python-lint:
