@@ -9,38 +9,37 @@ from psycopg2 import DatabaseError, pool
 
 @retry(stop=(stop_after_delay(10) | stop_after_attempt(5)), wait=wait_fixed(1))
 def init_connection_pool():
-    host = os.getenv('host')
-    pw = os.getenv('pwd')
-    db = os.getenv('db')
-    user = os.getenv('user')
-    minconn = os.getenv('min_conn')
-    maxconn = os.getenv('max_conn')
+    host = os.getenv("host")
+    pw = os.getenv("pwd")
+    db = os.getenv("db")
+    user = os.getenv("user")
+    min_conn = os.getenv('min_conn', 5)
+    max_conn = os.getenv('max_conn', 10)
     global connectionPool
-    connectionPool = pool.ThreadedConnectionPool(minconn=minconn, maxconn=maxconn,
-                                                 dbname=db,
-                                                 user=user,
-                                                 host=host,
-                                                 password=pw,
-                                                 connect_timeout=3,
-                                                 keepalives=1,
-                                                 keepalives_idle=5,
-                                                 keepalives_interval=2,
-                                                 options="",
-                                                 keepalives_count=2)
+    connectionPool = pool.ThreadedConnectionPool(
+        minconn=min_conn,
+        maxconn=max_conn,
+        dbname=db,
+        user=user,
+        host=host,
+        password=pw,
+        connect_timeout=3,
+        keepalives=1,
+        keepalives_idle=5,
+        keepalives_interval=2,
+        options="",
+        keepalives_count=2,
+    )
     logging.info("connected to db")
     return connectionPool
 
 
-def execute_query(query, params, cur=None):
-    if not cur:
-        cur = connectionPool.getconn().cursor()
+def execute_query(query, params, cur):
     cur.execute(query, params)
     return cur
 
 
-def execute_values(query, params, cur=None):
-    if not cur:
-        cur = connectionPool.getconn().cursor()
+def execute_values(query, params, cur):
     ps_execute_values(cur=cur, sql=query, argslist=params)
     return cur
 
@@ -48,7 +47,7 @@ def execute_values(query, params, cur=None):
 connectionPool = init_connection_pool()
 
 
-class CCursor():
+class CCursor:
     """Custom cursor that wraps the psycopg2 cursor"""
 
     def __init__(self, cursor) -> None:
@@ -69,6 +68,7 @@ class CCursor():
 
 class DatabaseException(Exception):
     """Base class for database exceptions"""
+
     def __init__(self, message, errors) -> None:
         super().__init__(message)
         logging.error("Error executing query %s", message)
@@ -76,22 +76,27 @@ class DatabaseException(Exception):
 
 def transaction(func):
     """
-        Creates a transaction and manages the connection rollback or commit.
-        Handles database errors and gracefully manages the connection.
+    Creates a transaction and manages the connection rollback or commit.
+    Handles database errors and gracefully manages the connection.
     """
+
     def wrapper(*args, **kwargs):
         logging.debug("transaction started")
         connection = connectionPool.getconn()
         try:
-            ret = func(*args, **kwargs, cursor=connection.cursor())
+            ret = func(*args, **kwargs, cur=connection.cursor())
             connection.commit()
             connectionPool.putconn(connection)
             logging.debug("transaction ended")
             return ret
         except DatabaseError as err:
             connection.rollback()
-            logging.error("Error executing sql %s", str(err))
             connectionPool.putconn(connection)
+            logging.error("Error executing sql %s", str(err))
             raise DatabaseException("Error while handling request")
+        except BaseException as baseErr:
+            connection.rollback()
+            connectionPool.putconn(connection)
+            raise baseErr
 
     return wrapper
