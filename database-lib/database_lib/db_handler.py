@@ -69,6 +69,9 @@ class DatabaseManager:
         ps_execute_values(cur=self.cursor, sql=query, argslist=params)
         return self.cursor
 
+    def getconn(self):
+        return self.cursor.connnection
+
 
 class CCursor:
     """Custom cursor that wraps the psycopg2 cursor"""
