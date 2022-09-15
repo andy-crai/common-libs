@@ -54,6 +54,7 @@ connection_pool_manager: ConnectionPoolManager = None
 def init_connection_pool_manager(conn_pool_manager):
     global connection_pool_manager
     connection_pool_manager = conn_pool_manager
+    logging.info(f"connection pool initialized {connection_pool_manager}")
 
 
 class DatabaseManager:
