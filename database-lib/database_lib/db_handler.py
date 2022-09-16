@@ -59,19 +59,25 @@ def init_connection_pool_manager(conn_pool_manager):
 
 class DatabaseManager:
 
-    def __init__(self, cursor) -> None:
-        self.cursor = cursor
+    def __init__(self, connection) -> None:
+        self.connection = connection
+        self.cursor = self.connection.cursor()
 
-    def execute_query(self, query, params):
+    def execute_query(self, query, params=None):
         self.cursor.execute(query, params)
         return self.cursor
 
-    def execute_values(self, query, params):
+    def execute_values(self, query, params=None):
         ps_execute_values(cur=self.cursor, sql=query, argslist=params)
         return self.cursor
 
     def getconn(self):
-        return self.cursor.connnection
+        if self.connection:
+            logging.info("connection is not null")
+            return self.connection
+        else:
+            logging.info("connection is none")
+            return None
 
 
 class CCursor:
@@ -111,7 +117,7 @@ def transaction(func):
         logging.debug("transaction started")
         connection_pool = connection_pool_manager.get_connection_pool()
         connection = connection_pool.getconn()
-        db_manager = DatabaseManager(connection.cursor())
+        db_manager = DatabaseManager(connection)
         logging.debug("connection %s", str(connection))
 
         try:
