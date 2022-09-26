@@ -1,8 +1,9 @@
 import logging
+import copy
 
 from tenacity import retry, stop_after_delay, stop_after_attempt, wait_fixed
 from psycopg2.extras import execute_values as ps_execute_values
-from psycopg2 import DatabaseError, pool
+from psycopg2 import DatabaseError, OperationalError, pool
 
 # from abc import ABC, abstractmethod
 
@@ -121,12 +122,26 @@ def transaction(func):
         logging.debug("connection %s", str(connection))
 
         try:
-            ret = func(*args, **kwargs, db_manager=db_manager)
+            new_kwargs = copy.deepcopy(kwargs)
+            if "db_manager" in new_kwargs:
+                new_kwargs.pop("db_manager")
+            if "retry" in new_kwargs:
+                new_kwargs.pop("retry")
+            ret = func(*args, **new_kwargs, db_manager=db_manager)
             logging.debug("return data %s", str(ret))
             connection.commit()
             connection_pool.putconn(connection)
             logging.debug("transaction ended")
             return ret
+        except OperationalError as opErr:
+            logging.error("Operational error occured")
+            connection_pool.putconn(conn=connection, close=True)
+            retry_val = kwargs.get('retry', 0)
+            kwargs['retry'] = retry_val+1
+            logging.error(f"retry count {retry_val}")
+            if retry_val > 10:
+                raise DatabaseException("Error while handling request", errors=[opErr])
+            return wrapper(*args, **kwargs)
         except DatabaseError as err:
             logging.error("Error executing sql %s", str(err))
             connection.rollback()
