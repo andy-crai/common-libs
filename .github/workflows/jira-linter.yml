@@ -1,0 +1,22 @@
+name: Jira Linter
+on:
+  pull_request:
+
+jobs:
+  jira-linter:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run Jira Linter
+        uses: btwrk/action-jira-linter@v1.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          jira-user: sergei@controlrooms.ai
+          jira-token: ${{ secrets.JIRA_TOKEN }}
+          jira-base-url: https://controlrooms.atlassian.net
+          skip-branches: '^(kaizen\-.+|revert\-.+|dependabot.+)$'
+          validate-issue-status: true
+          allowed-issue-statuses: |
+            In Progress
+            In Review
+          fail-on-error: false # FIXME: remove these training wheels
